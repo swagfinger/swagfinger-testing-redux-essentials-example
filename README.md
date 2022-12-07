@@ -1,46 +1,141 @@
-# Getting Started with Create React App and Redux
+# Redux
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app), using the [Redux](https://redux.js.org/) and [Redux Toolkit](https://redux-toolkit.js.org/) template.
+- state management using events called "actions"
+- centralized store for state across entire application
+- redux is for writing code that is predictable and testable
 
-## Available Scripts
+## Redux store (Reducer)
 
-In the project directory, you can run:
+- The center of every Redux application is the store.
+- A "store" is a container that holds your application's global state.
+- its a JavaScript object with a few special functions and abilities that make it different than a plain global object
+- Redux expects that all state updates are done immutably
+- store notifies subscribers that the state has been updated so the UI can be updated with the new data.
 
-### `npm start`
+### Actions
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- to cause an update to the state, create a plain action object that describes "something that happened in the application", and then dispatch the action to the store to tell it what happened.
+- action is dispatched, the store runs the root reducer function, and lets it calculate the new state based on the old state and the action. updates state immutably
+- An action is a plain JavaScript object that has a type field. You can think of an action as an event that describes something that happened in the application.
+- The type field should be a string that gives this action a descriptive name, like "todos/todoAdded" - the first part is the feature or category that this action belongs to, and the second part is the specific thing that happened.
+- An action object can have other fields with additional information about what happened. By convention, we put that information in a field called payload.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+## Redux (Basic Example without react)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```js
+import { createStore } from 'redux';
 
-### `npm run build`
+/**
+ * This is a reducer - a function that takes a current state value and an
+ * action object describing "what happened", and returns a new state value.
+ * A reducer's function signature is: (state, action) => newState
+ *
+ * The Redux state should contain only plain JS objects, arrays, and primitives.
+ * The root state value is usually an object. It's important that you should
+ * not mutate the state object, but return a new object if the state changes.
+ *
+ * You can use any conditional logic you want in a reducer. In this example,
+ * we use a switch statement, but it's not required.
+ */
+function counterReducer(state = { value: 0 }, action) {
+  switch (action.type) {
+    case 'counter/incremented':
+      return { value: state.value + 1 };
+    case 'counter/decremented':
+      return { value: state.value - 1 };
+    default:
+      return state;
+  }
+}
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+// Create a Redux store holding the state of your app.
+// Its API is { subscribe, dispatch, getState }.
+let store = createStore(counterReducer);
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+// You can use subscribe() to update the UI in response to state changes.
+// Normally you'd use a view binding library (e.g. React Redux) rather than subscribe() directly.
+// There may be additional use cases where it's helpful to subscribe as well.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+store.subscribe(() => console.log(store.getState()));
 
-### `npm run eject`
+// The only way to mutate the internal state is to dispatch an action.
+// The actions can be serialized, logged or stored and later replayed.
+store.dispatch({ type: 'counter/incremented' });
+// {value: 1}
+store.dispatch({ type: 'counter/incremented' });
+// {value: 2}
+store.dispatch({ type: 'counter/decremented' });
+// {value: 1}
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+---
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### State, action, reducer
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+1. define initialState
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+2. define reducer(state=initialState, action) with switch action.type, each action returns new state
 
-## Learn More
+### Store
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+3. Create a new Redux store: const store = Redux.createStore(reducer)
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### UI
+
+4. user interacts with a button, render() function has: const state = store.getState(), then update with new state
+5. store.subscribe(render) to redraw whenever the data changes in the future
+
+## Dispatching actions
+
+6. in UI dispatch action
+
+---
+
+# Redux toolkit
+
+```js
+import { createSlice } from '@reduxjs/toolkit';
+
+export const counterSlice = createSlice({
+  name: 'counter',
+  initialState: {
+    value: 0
+  },
+  reducers: {
+    increment: (state) => {
+      // Redux Toolkit allows us to write "mutating" logic in reducers. It
+      // doesn't actually mutate the state because it uses the immer library,
+      // which detects changes to a "draft state" and produces a brand new
+      // immutable state based off those changes
+      state.value += 1;
+    },
+    decrement: (state) => {
+      state.value -= 1;
+    },
+    incrementByAmount: (state, action) => {
+      state.value += action.payload;
+    }
+  }
+});
+
+export const { increment, decrement, incrementByAmount } = counterSlice.actions;
+
+// The function below is called a thunk and allows us to perform async logic. It
+// can be dispatched like a regular action: `dispatch(incrementAsync(10))`. This
+// will call the thunk with the `dispatch` function as the first argument. Async
+// code can then be executed and other actions can be dispatched
+export const incrementAsync = (amount) => (dispatch) => {
+  setTimeout(() => {
+    dispatch(incrementByAmount(amount));
+  }, 1000);
+};
+
+// The function below is called a selector and allows us to select a value from
+// the state. Selectors can also be defined inline where they're used instead of
+// in the slice file. For example: `useSelector((state) => state.counter.value)`
+export const selectCount = (state) => state.counter.value;
+
+export default counterSlice.reducer;
+```
